@@ -1,0 +1,11 @@
+{
+  "name": "acolhe-prototipo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Protótipo de plataforma para divulgação de animais para adoção.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js"
+  }
+}
