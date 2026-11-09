@@ -1,0 +1,32 @@
+# Blueprint do Render: https://render.com/docs/blueprint-spec
+# No painel do Render: New > Blueprint > escolha este repositório.
+services:
+  - type: web
+    name: acolhe
+    runtime: node
+    plan: free
+    # Virginia é a região do Render mais próxima do Brasil.
+    region: virginia
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # String de conexão do MongoDB Atlas. O Render pede o valor ao criar o Blueprint.
+      - key: MONGODB_URI
+        sync: false
+      # Gerada automaticamente pelo Render.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEMO_DATA
+        value: "true"
+      # No plano grátis o disco é apagado a cada deploy/reinício (fotos enviadas somem).
+      # Para guardar as fotos: troque o plan para "starter", mude este valor para
+      # /var/data/uploads e descomente o bloco "disk" abaixo.
+      - key: UPLOADS_DIR
+        value: uploads
+    # disk:
+    #   name: acolhe-uploads
+    #   mountPath: /var/data
+    #   sizeGB: 1

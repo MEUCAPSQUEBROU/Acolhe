@@ -19,7 +19,7 @@
     "postedAt": "2026-09-01",
     "traits": ["Carinhosa", "Vacinada", "Castrada"],
     "description": "Amélia é dócil, adora passear e convive bem com crianças. Está em lar temporário no bairro Luzia e procura uma família responsável.",
-    "images": ["/assets/amelia-real.png"]
+    "images": ["/assets/amelia-real.jpg"]
   },
   {
     "id": "simba-interno",
@@ -41,7 +41,7 @@
     "postedAt": "2026-08-31",
     "traits": ["Filhote", "Brincalhão", "Dócil"],
     "description": "Simba foi resgatado com os irmãos e precisa de uma família que possa acompanhar seu crescimento. É muito brincalhão e carinhoso.",
-    "images": ["/assets/simba-real.png"]
+    "images": ["/assets/simba-real.jpg"]
   },
   {
     "id": "jurema-interna",
@@ -63,7 +63,7 @@
     "postedAt": "2026-08-29",
     "traits": ["Companheira", "Calma", "Castrada"],
     "description": "Jurema é uma cadela tranquila e companheira. Gosta de ambientes com espaço e de pessoas que tenham tempo para dar carinho.",
-    "images": ["/assets/jurema-real.png"]
+    "images": ["/assets/jurema-real.jpg"]
   },
   {
     "id": "tuca-interna",
@@ -85,7 +85,7 @@
     "postedAt": "2026-08-27",
     "traits": ["Independente", "Carinhosa", "Castrada"],
     "description": "Tuca é uma gata independente, mas muito carinhosa depois que ganha confiança. Está acostumada a viver dentro de casa.",
-    "images": ["/assets/tuca-real.png"]
+    "images": ["/assets/tuca-real.jpg"]
   },
   {
     "id": "casquinha-interna",
@@ -107,7 +107,7 @@
     "postedAt": "2026-08-26",
     "traits": ["Calma", "Aquática", "Cuidados especiais"],
     "description": "Casquinha procura uma família que conheça os cuidados de uma tartaruga tigre-d’água, com espaço adequado, sol e alimentação correta.",
-    "images": ["/assets/casquinha-real.png"]
+    "images": ["/assets/casquinha-real.jpg"]
   },
   {
     "id": "kiwi-interno",
@@ -129,7 +129,7 @@
     "postedAt": "2026-08-24",
     "traits": ["Exótico", "Tranquilo", "Terrário"],
     "description": "Kiwi é um lagarto tranquilo e está sendo encaminhado para alguém com experiência em répteis e estrutura adequada para mantê-lo.",
-    "images": ["/assets/kiwi-real.png"]
+    "images": ["/assets/kiwi-real.jpg"]
   },
   {
     "id": "farofa-interna",
@@ -151,6 +151,6 @@
     "postedAt": "2026-08-21",
     "traits": ["Manso", "Silencioso", "Castrado"],
     "description": "Farofa é um coelho manso que vive dentro de casa. Procura um lar que conheça sua rotina, alimentação e necessidades de espaço.",
-    "images": ["/assets/farofa-real.png"]
+    "images": ["/assets/farofa-real.jpg"]
   }
 ]

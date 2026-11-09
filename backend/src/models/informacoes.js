@@ -6,6 +6,7 @@ const informacoesSchema = new mongoose.Schema({
     senha: { type: String, required: true, select: false },
     dataNascimento: { type: Date },
     telefone: { type: String, trim: true },
+    favoritos: { type: [String], default: [] },
 }, { timestamps: true, versionKey: false });
 
 const informacoes = mongoose.models.informacoes || mongoose.model("informacoes", informacoesSchema);
