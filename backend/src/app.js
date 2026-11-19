@@ -26,7 +26,14 @@ routes(app);
 
 app.use("/api", (req, res) => res.status(404).json({ error: "Rota não encontrada." }));
 app.use("/uploads", express.static(config.uploadsDir, { maxAge: "30d", immutable: true, fallthrough: false }));
-app.use(express.static(config.publicDir, { maxAge: "1h" }));
+// HTML, JS e CSS são revalidados a cada acesso (ETag), para uma atualização do site
+// nunca misturar arquivos novos com antigos guardados no navegador. Fotos seguem em cache.
+app.use(express.static(config.publicDir, {
+    maxAge: "1h",
+    setHeaders: (res, filePath) => {
+        if (/\.(?:html|js|css)$/.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+    },
+}));
 
 // eslint-disable-next-line no-unused-vars
 app.use((error, req, res, next) => {
