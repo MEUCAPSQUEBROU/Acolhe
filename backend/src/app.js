@@ -1,6 +1,7 @@
 import express from "express";
 import config from "./config/env.js";
 import routes from "./routes/index.js";
+import StoredImage from "./models/storedImage.js";
 
 const app = express();
 
@@ -25,6 +26,13 @@ app.use((req, res, next) => (sendsPhotos(req) ? next() : smallJson(req, res, nex
 routes(app);
 
 app.use("/api", (req, res) => res.status(404).json({ error: "Rota não encontrada." }));
+// Fotos enviadas ficam no banco; se não estiverem lá, tenta a pasta de uploads (versões antigas).
+app.get("/uploads/:name", async (req, res, next) => {
+    const image = await StoredImage.findOne({ name: req.params.name });
+    if (!image) return next();
+    res.set({ "Content-Type": image.contentType, "Cache-Control": "public, max-age=2592000, immutable" });
+    res.send(image.data);
+});
 app.use("/uploads", express.static(config.uploadsDir, { maxAge: "30d", immutable: true, fallthrough: false }));
 // HTML, JS e CSS são revalidados a cada acesso (ETag), para uma atualização do site
 // nunca misturar arquivos novos com antigos guardados no navegador. Fotos seguem em cache.
