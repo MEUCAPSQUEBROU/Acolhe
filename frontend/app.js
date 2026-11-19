@@ -14,7 +14,7 @@ let pendingPublish = false;
 let pendingFavorite = null;
 
 function apiOptions(options = {}) { const headers = { ...(options.headers || {}) }; if (token) headers.Authorization = `Bearer ${token}`; return { ...options, headers }; }
-function queryParams() { const params = new URLSearchParams(); const q = document.querySelector('#hero-search-input').value.trim() || document.querySelector('#header-search-input').value.trim(); const species = document.querySelector('#species-filter').value; const location = document.querySelector('#location-filter').value.trim(); const source = document.querySelector('#source-filter').value; const size = document.querySelector('input[name="size"]:checked')?.value; if (q) params.set('q', q); if (species) params.set('species', species); if (location) params.set('location', location); if (source) params.set('source', source); if (size) params.set('size', size); if (document.querySelector('#urgent-filter').checked) params.set('urgent', 'true'); if (document.querySelector('#sort-filter').value) params.set('sort', document.querySelector('#sort-filter').value); return params; }
+function queryParams() { const params = new URLSearchParams(); const q = document.querySelector('#hero-search-input').value.trim() || document.querySelector('#header-search-input').value.trim(); const species = document.querySelector('#species-filter').value; const location = document.querySelector('#location-filter').value.trim(); const source = document.querySelector('#source-filter').value; const sizes = [...document.querySelectorAll('input[name="size"]:checked')].map((input) => input.value); if (q) params.set('q', q); if (species) params.set('species', species); if (location) params.set('location', location); if (source) params.set('source', source); if (sizes.length) params.set('size', sizes.join(',')); if (document.querySelector('#urgent-filter').checked) params.set('urgent', 'true'); if (document.querySelector('#sort-filter').value) params.set('sort', document.querySelector('#sort-filter').value); return params; }
 
 function cardTemplate(animal) { const saved = favorites.has(animal.id); const sourceLabel = animal.sourceType === 'external' ? 'Anúncio externo' : 'Publicado no Acolhe'; const photo = animal.images?.[0] || animal.photo; const originalAction = animal.externalLink ? `<a class="ad-link" href="${clean(animal.externalLink)}" target="_blank" rel="noopener noreferrer">Abrir anúncio original ↗</a>` : `<button class="ad-link" data-details="${clean(animal.id)}">Conversar no WhatsApp →</button>`; return `<article class="animal-card"><div class="animal-photo-wrap"><img class="animal-photo" src="${clean(photo)}" alt="${clean(animal.name)}, ${clean(speciesLabel[animal.species] || animal.species)}" loading="lazy" />${animal.urgent ? '<span class="badge">Adoção urgente</span>' : ''}<span class="source-badge">${sourceLabel}</span><button class="favorite ${saved ? 'saved' : ''}" data-favorite="${clean(animal.id)}" aria-label="${saved ? 'Remover dos favoritos' : 'Salvar'} ${clean(animal.name)}">${saved ? '♥' : '♡'}</button></div><button class="animal-info" data-details="${clean(animal.id)}"><div class="animal-title"><h3>${clean(animal.name)}</h3><span>${formatDate(animal.postedAt)}</span></div><p class="animal-meta">${clean(speciesLabel[animal.species] || animal.species)} · ${clean(animal.breed || 'Sem raça definida')} · ${clean(animal.age || 'Não informado')}</p><p class="animal-location"><span>⌖</span> ${clean(animal.city)}, ${clean(animal.state || 'SE')}</p></button><div class="animal-footer"><span class="adoption-label">Adoção gratuita</span><span class="source-label">${clean(animal.organization)}</span></div>${originalAction}</article>`; }
 
@@ -27,21 +27,223 @@ function closeModal() { document.querySelector('#modal-backdrop').hidden = true;
 
 async function showDetails(id) { const response = await fetch(`${API_BASE_URL}/api/animals/${encodeURIComponent(id)}`); if (!response.ok) return; const animal = await response.json(); const images = animal.images?.length ? animal.images : [animal.photo]; const whatsapp = (animal.whatsapp || '').replace(/\D/g, ''); const action = animal.externalLink ? `<a class="button button-primary external-action" href="${clean(animal.externalLink)}" target="_blank" rel="noopener noreferrer">Visitar anúncio original ↗</a>` : whatsapp ? `<a class="button button-primary external-action" href="https://wa.me/${whatsapp}" target="_blank" rel="noopener noreferrer">Conversar com o responsável ↗</a>` : '<div class="contact-box">O responsável ainda não informou um WhatsApp.</div>'; const contact = animal.sourceType === 'acolhe' && whatsapp ? `${clean(animal.organization)} · WhatsApp disponível${animal.contact && animal.contact !== 'Contato disponível no anúncio' ? ` · ${clean(animal.contact)}` : ''}` : `${clean(animal.organization)} · ${clean(animal.contact)}`; openModal(`<div class="detail-modal"><div class="detail-gallery"><img class="detail-gallery-main" src="${clean(images[0])}" alt="${clean(animal.name)}" /><div class="detail-thumbs">${images.map((image) => `<img src="${clean(image)}" alt="Foto de ${clean(animal.name)}" />`).join('')}</div></div><div><div class="breadcrumb">${animal.sourceType === 'external' ? 'Anúncio externo' : 'Publicado no Acolhe'} <span>·</span> ${animal.urgent ? 'Adoção urgente' : 'Adoção gratuita'}</div><h2>${clean(animal.name)}</h2><p class="animal-meta">${clean(speciesLabel[animal.species] || animal.species)} · ${clean(animal.breed || 'Sem raça definida')} · ${clean(animal.age || 'Não informado')} · Porte ${clean(animal.size || 'não informado')}</p><p class="animal-location"><span>⌖</span> ${clean(animal.city)}, ${clean(animal.state || 'SE')}</p><p class="detail-description">${clean(animal.description)}</p><div class="traits">${(animal.traits || []).map((trait) => `<span class="trait">${clean(trait)}</span>`).join('')}</div><div class="contact-box">Publicado por<strong>${contact}</strong></div>${action}</div></div>`); }
 
-function updateAuthUI() { const actions = document.querySelector('#auth-actions'); if (!currentUser) { actions.innerHTML = '<button class="login-button" id="open-login">Entrar</button><button class="button button-publish" id="open-register">Criar conta</button>'; } else { actions.innerHTML = `<div class="auth-user"><span>Olá, <strong>${clean(currentUser.name.split(' ')[0])}</strong></span><button id="logout">Sair</button></div>`; } document.querySelector('#open-login')?.addEventListener('click', () => showAuth('login')); document.querySelector('#open-register')?.addEventListener('click', () => showAuth('register')); document.querySelector('#logout')?.addEventListener('click', logout); }
+function updateAuthUI() {
+  const actions = document.querySelector('#auth-actions');
+  if (!currentUser) {
+    actions.innerHTML = '<button class="login-button" id="open-login">Entrar</button><button class="button button-publish" id="open-register">Criar conta</button>';
+  } else {
+    actions.innerHTML = `<div class="auth-user"><span>Olá, <strong>${clean(currentUser.name.split(' ')[0])}</strong></span><button class="my-ads-link" id="open-my-ads">Meus anúncios</button><button id="logout">Sair</button></div>`;
+  }
+  const mobileButton = document.querySelector('#open-login-mobile');
+  if (mobileButton) mobileButton.textContent = currentUser ? 'Meus anúncios' : 'Entrar ou criar conta';
+  document.querySelector('#open-login')?.addEventListener('click', () => showAuth('login'));
+  document.querySelector('#open-register')?.addEventListener('click', () => showAuth('register'));
+  document.querySelector('#open-my-ads')?.addEventListener('click', showMyAds);
+  document.querySelector('#logout')?.addEventListener('click', logout);
+}
+function expireSession() {
+  token = '';
+  currentUser = null;
+  favorites = new Set();
+  localStorage.removeItem('acolhe-token');
+  localStorage.removeItem('acolhe-user');
+  updateAuthUI();
+  updateFavoriteCount();
+}
 function showAuth(mode = 'login') { openModal(document.querySelector('#auth-template').innerHTML); const form = document.querySelector('#auth-form'); const nameField = document.querySelector('.auth-name-field'); const title = document.querySelector('#auth-title'); const subtitle = document.querySelector('#auth-subtitle'); const submit = document.querySelector('#auth-submit'); const setMode = (nextMode) => { mode = nextMode; document.querySelectorAll('[data-auth-mode]').forEach((button) => button.classList.toggle('selected', button.dataset.authMode === mode)); nameField.hidden = mode !== 'register'; nameField.querySelector('input').required = mode === 'register'; title.textContent = mode === 'login' ? 'Entre para continuar' : 'Crie sua conta'; subtitle.textContent = mode === 'login' ? 'Para publicar ou favoritar, você precisa estar conectado.' : 'Cadastre-se gratuitamente para publicar e salvar anúncios.'; submit.innerHTML = `${mode === 'login' ? 'Entrar' : 'Criar conta'} <span>→</span>`; }; document.querySelectorAll('[data-auth-mode]').forEach((button) => button.addEventListener('click', () => setMode(button.dataset.authMode))); setMode(mode); form.addEventListener('submit', async (event) => { event.preventDefault(); const feedback = document.querySelector('#auth-feedback'); if (submit.disabled) return; feedback.textContent = 'Aguarde...'; const input = Object.fromEntries(new FormData(form).entries()); submit.disabled = true; let response; let data; try { response = await fetch(`${API_BASE_URL}/api/auth/${mode === 'login' ? 'login' : 'register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }); data = await response.json().catch(() => ({})); } catch { feedback.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; return; } finally { submit.disabled = false; } if (!response.ok) { feedback.textContent = data.error || 'Não foi possível concluir.'; return; } token = data.token; currentUser = data.user; localStorage.setItem('acolhe-token', token); localStorage.setItem('acolhe-user', JSON.stringify(currentUser)); updateAuthUI(); await loadFavorites(); closeModal(); if (pendingPublish) { pendingPublish = false; showPostForm(); } if (pendingFavorite) { const favoriteId = pendingFavorite; pendingFavorite = null; await toggleFavorite(favoriteId); } }); }
 async function logout() { await fetch(`${API_BASE_URL}/api/auth/logout`, apiOptions({ method: 'POST' })); token = ''; currentUser = null; favorites = new Set(); localStorage.removeItem('acolhe-token'); localStorage.removeItem('acolhe-user'); updateAuthUI(); updateFavoriteCount(); }
 async function restoreSession() { if (!token) return; const response = await fetch(`${API_BASE_URL}/api/auth/me`, apiOptions()); if (!response.ok) { token = ''; currentUser = null; localStorage.removeItem('acolhe-token'); localStorage.removeItem('acolhe-user'); updateAuthUI(); return; } const data = await response.json(); currentUser = data.user; localStorage.setItem('acolhe-user', JSON.stringify(currentUser)); updateAuthUI(); await loadFavorites(); }
 function requireLogin() { if (currentUser && token) showPostForm(); else { pendingPublish = true; showAuth('login'); } }
 
+// Fotos HEIC (padrão do iPhone) não abrem no Chrome; o conversor só é baixado quando necessário.
+const isHeic = (file) => /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+let heicConverter = null;
+function loadHeicConverter() {
+  heicConverter ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    script.onload = () => resolve(window.heic2any);
+    script.onerror = () => { heicConverter = null; reject(new Error('heic-converter')); };
+    document.head.appendChild(script);
+  });
+  return heicConverter;
+}
+function loadImage(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+    img.src = url;
+  });
+}
 // Reduz a foto no navegador (máx. 1600px, JPEG) para o envio ficar leve mesmo pelo celular.
-function resizeImage(file, maxSize = 1600, quality = 0.82) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = reject; reader.onload = () => { const img = new Image(); img.onerror = () => resolve(reader.result); img.onload = () => { const scale = Math.min(1, maxSize / Math.max(img.width, img.height)); const canvas = document.createElement('canvas'); canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', quality)); }; img.src = reader.result; }; reader.readAsDataURL(file); }); }
+async function resizeImage(file, maxSize = 1600, quality = 0.82) {
+  let img;
+  try {
+    img = await loadImage(file);
+  } catch (error) {
+    if (!isHeic(file)) throw error;
+    const heic2any = await loadHeicConverter();
+    const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+    img = await loadImage(Array.isArray(converted) ? converted[0] : converted);
+  }
+  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', quality);
+}
 function renderImagePreview() { const preview = document.querySelector('#image-preview'); if (!preview) return; preview.innerHTML = selectedImages.map((image, index) => `<div class="image-preview-item"><img src="${image}" alt="Prévia da foto ${index + 1}" /><button type="button" data-remove-image="${index}" aria-label="Remover foto">×</button></div>`).join(''); }
-function showPostForm() { selectedImages = []; openModal(document.querySelector('#post-template').innerHTML); const form = document.querySelector('#post-form'); const externalField = document.querySelector('.external-field'); const linkInput = externalField.querySelector('input'); const whatsappInput = form.whatsapp; const fileInput = document.querySelector('#animal-images'); const feedback = document.querySelector('#form-feedback'); document.querySelectorAll('[data-post-type]').forEach((button) => button.addEventListener('click', () => { document.querySelectorAll('[data-post-type]').forEach((item) => item.classList.remove('selected')); button.classList.add('selected'); const isExternal = button.dataset.postType === 'external'; externalField.hidden = !isExternal; linkInput.required = isExternal; whatsappInput.required = !isExternal; })); fileInput.addEventListener('change', async () => { const files = [...fileInput.files]; if (!files.length) return; if (files.length > 6) { feedback.textContent = 'Escolha no máximo 6 imagens.'; fileInput.value = ''; return; } selectedImages = []; for (const file of files) { if (!file.type.startsWith('image/')) continue; selectedImages.push(await resizeImage(file)); } renderImagePreview(); feedback.textContent = selectedImages.length ? `${selectedImages.length} ${selectedImages.length === 1 ? 'foto selecionada' : 'fotos selecionadas'}.` : 'Selecione ao menos uma imagem.'; }); document.querySelector('#image-preview').addEventListener('click', (event) => { const remove = event.target.closest('[data-remove-image]'); if (!remove) return; selectedImages.splice(Number(remove.dataset.removeImage), 1); renderImagePreview(); feedback.textContent = selectedImages.length ? `${selectedImages.length} foto(s) selecionada(s).` : 'Adicione pelo menos uma foto.'; }); form.addEventListener('submit', async (event) => { event.preventDefault(); const submitButton = form.querySelector('button[type="submit"]'); if (submitButton.disabled) return; const input = Object.fromEntries(new FormData(form).entries()); delete input['animal-images']; input.urgent = form.urgent.checked; input.images = selectedImages; feedback.textContent = 'Publicando anúncio...'; submitButton.disabled = true; let response; let data; try { response = await fetch(`${API_BASE_URL}/api/animals`, apiOptions({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })); data = await response.json().catch(() => ({})); } catch { submitButton.disabled = false; feedback.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.'; return; } if (!response.ok) { submitButton.disabled = false; feedback.textContent = data.error || 'Confira os dados e tente novamente.'; return; } feedback.textContent = 'Anúncio publicado gratuitamente!'; setTimeout(() => { closeModal(); loadAnimals(); document.querySelector('#adocoes').scrollIntoView({ behavior: 'smooth' }); }, 800); }); }
+function showPostForm(animal = null) {
+  const editing = Boolean(animal);
+  selectedImages = editing ? [...(animal.images?.length ? animal.images : [animal.photo])].filter(Boolean) : [];
+  openModal(document.querySelector('#post-template').innerHTML);
+  const form = document.querySelector('#post-form');
+  const externalField = document.querySelector('.external-field');
+  const linkInput = externalField.querySelector('input');
+  const whatsappInput = form.whatsapp;
+  const fileInput = document.querySelector('#animal-images');
+  const feedback = document.querySelector('#form-feedback');
+  const submitButton = form.querySelector('button[type="submit"]');
+  // As fotos ficam em `selectedImages`; a obrigatoriedade é conferida no envio.
+  fileInput.required = false;
+  const setPostType = (isExternal) => {
+    document.querySelectorAll('[data-post-type]').forEach((item) => item.classList.toggle('selected', (item.dataset.postType === 'external') === isExternal));
+    externalField.hidden = !isExternal;
+    linkInput.required = isExternal;
+    whatsappInput.required = !isExternal;
+  };
+  document.querySelectorAll('[data-post-type]').forEach((button) => button.addEventListener('click', () => setPostType(button.dataset.postType === 'external')));
+  if (editing) {
+    document.querySelector('#modal-content .breadcrumb').textContent = 'Meus anúncios';
+    document.querySelector('#modal-title').textContent = 'Editar anúncio';
+    submitButton.innerHTML = 'Salvar alterações <span>→</span>';
+    form.name.value = animal.name || '';
+    form.species.value = animal.species || '';
+    form.city.value = animal.city || '';
+    form.size.value = animal.size || 'pequeno';
+    form.externalLink.value = animal.externalLink || '';
+    form.organization.value = animal.organization === 'Anunciante independente' ? '' : animal.organization || '';
+    form.contact.value = animal.contact === 'Contato disponível no anúncio' ? '' : animal.contact || '';
+    form.whatsapp.value = animal.whatsapp || '';
+    form.description.value = animal.description || '';
+    form.urgent.checked = Boolean(animal.urgent);
+    setPostType(animal.sourceType === 'external');
+    renderImagePreview();
+  }
+  const photoCount = () => (selectedImages.length ? `${selectedImages.length} ${selectedImages.length === 1 ? 'foto selecionada' : 'fotos selecionadas'}.` : 'Adicione pelo menos uma foto.');
+  fileInput.addEventListener('change', async () => {
+    const files = [...fileInput.files].filter((file) => file.type.startsWith('image/') || isHeic(file));
+    fileInput.value = '';
+    if (!files.length) return;
+    const room = 6 - selectedImages.length;
+    if (room <= 0) { feedback.textContent = 'Você já adicionou 6 fotos. Remova alguma para trocar.'; return; }
+    feedback.textContent = files.some(isHeic) ? 'Convertendo fotos do iPhone...' : 'Preparando fotos...';
+    let failed = 0;
+    for (const file of files.slice(0, room)) {
+      try { selectedImages.push(await resizeImage(file)); } catch { failed += 1; }
+    }
+    renderImagePreview();
+    const notes = [photoCount()];
+    if (files.length > room) notes.push('Só cabem 6 fotos por anúncio.');
+    if (failed) notes.push(`${failed} ${failed === 1 ? 'foto não pôde ser aberta' : 'fotos não puderam ser abertas'}. Use JPG, PNG, WEBP ou HEIC.`);
+    feedback.textContent = notes.join(' ');
+  });
+  document.querySelector('#image-preview').addEventListener('click', (event) => {
+    const remove = event.target.closest('[data-remove-image]');
+    if (!remove) return;
+    selectedImages.splice(Number(remove.dataset.removeImage), 1);
+    renderImagePreview();
+    feedback.textContent = photoCount();
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (submitButton.disabled) return;
+    if (!selectedImages.length) { feedback.textContent = 'Adicione pelo menos uma foto do animal.'; return; }
+    const input = Object.fromEntries(new FormData(form).entries());
+    delete input['animal-images'];
+    if (externalField.hidden) input.externalLink = '';
+    input.urgent = form.urgent.checked;
+    input.images = selectedImages;
+    feedback.textContent = editing ? 'Salvando alterações...' : 'Publicando anúncio...';
+    submitButton.disabled = true;
+    const url = editing ? `${API_BASE_URL}/api/animals/${encodeURIComponent(animal.id)}` : `${API_BASE_URL}/api/animals`;
+    let response;
+    let data;
+    try {
+      response = await fetch(url, apiOptions({ method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }));
+      data = await response.json().catch(() => ({}));
+    } catch {
+      submitButton.disabled = false;
+      feedback.textContent = 'Sem conexão com o servidor. Verifique a internet e tente novamente.';
+      return;
+    }
+    if (!response.ok) {
+      submitButton.disabled = false;
+      feedback.textContent = data.error || 'Confira os dados e tente novamente.';
+      return;
+    }
+    feedback.textContent = editing ? 'Alterações salvas!' : 'Anúncio publicado gratuitamente!';
+    setTimeout(() => {
+      closeModal();
+      loadAnimals();
+      if (editing) showMyAds();
+      else document.querySelector('#adocoes').scrollIntoView({ behavior: 'smooth' });
+    }, 800);
+  });
+}
+
+// Lista os anúncios publicados pelo usuário, com opções de editar e excluir.
+async function showMyAds() {
+  if (!currentUser || !token) { showAuth('login'); return; }
+  document.querySelector('#mobile-nav')?.classList.remove('open');
+  openModal(`<div class="modal-header"><div class="breadcrumb">Sua conta · ${clean(currentUser.email)}</div><h2 id="modal-title">Meus anúncios</h2><p>Edite ou exclua os anúncios que você publicou.</p></div><div class="my-ads" id="my-ads"><div class="empty-state">Carregando seus anúncios...</div></div><div class="my-ads-footer"><button type="button" class="button button-publish" id="my-ads-new">＋ Publicar novo anúncio</button><button type="button" class="my-ads-logout" id="my-ads-logout">Sair da conta</button></div>`);
+  const list = document.querySelector('#my-ads');
+  document.querySelector('#my-ads-new').addEventListener('click', () => showPostForm());
+  document.querySelector('#my-ads-logout').addEventListener('click', async () => { closeModal(); await logout(); });
+  let animals;
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/my/animals`, apiOptions());
+    if (response.status === 401) { expireSession(); closeModal(); showAuth('login'); return; }
+    animals = (await response.json()).animals || [];
+  } catch {
+    list.innerHTML = '<div class="empty-state"><strong>Não foi possível carregar</strong>Verifique a conexão e tente novamente.</div>';
+    return;
+  }
+  if (!animals.length) {
+    list.innerHTML = '<div class="empty-state"><strong>Você ainda não publicou anúncios</strong>Quando publicar, eles aparecem aqui para editar ou excluir.</div>';
+    return;
+  }
+  list.innerHTML = animals.map((animal) => `<div class="my-ad" data-my-ad="${clean(animal.id)}"><img src="${clean(animal.images?.[0] || animal.photo)}" alt="${clean(animal.name)}" /><div class="my-ad-info"><strong>${clean(animal.name)}</strong><span>${clean(speciesLabel[animal.species] || animal.species)} · ${clean(animal.city)} · ${formatDate(animal.postedAt)}</span></div><div class="my-ad-actions"><button type="button" data-edit-ad="${clean(animal.id)}">Editar</button><button type="button" class="danger" data-delete-ad="${clean(animal.id)}">Excluir</button></div></div>`).join('');
+  list.addEventListener('click', async (event) => {
+    const edit = event.target.closest('[data-edit-ad]');
+    const remove = event.target.closest('[data-delete-ad]');
+    if (edit) showPostForm(animals.find((animal) => animal.id === edit.dataset.editAd));
+    if (!remove) return;
+    const animal = animals.find((item) => item.id === remove.dataset.deleteAd);
+    if (!window.confirm(`Excluir o anúncio de ${animal.name}? Essa ação não pode ser desfeita.`)) return;
+    remove.disabled = true;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/animals/${encodeURIComponent(animal.id)}`, apiOptions({ method: 'DELETE' }));
+      if (!response.ok) throw new Error('delete');
+    } catch {
+      remove.disabled = false;
+      window.alert('Não foi possível excluir agora. Tente novamente.');
+      return;
+    }
+    favorites.delete(animal.id);
+    updateFavoriteCount();
+    loadAnimals();
+    showMyAds();
+  });
+}
 
 function searchFrom(value) { document.querySelector('#header-search-input').value = value; document.querySelector('#hero-search-input').value = value; loadAnimals(); document.querySelector('#adocoes').scrollIntoView({ behavior: 'smooth' }); }
 document.querySelector('#header-search').addEventListener('submit', (event) => { event.preventDefault(); searchFrom(document.querySelector('#header-search-input').value); }); document.querySelector('#hero-search').addEventListener('submit', (event) => { event.preventDefault(); searchFrom(document.querySelector('#hero-search-input').value); });
 ['#species-filter', '#source-filter', '#urgent-filter'].forEach((selector) => document.querySelector(selector).addEventListener('change', loadAnimals)); document.querySelector('#location-filter').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); loadAnimals(); } }); document.querySelectorAll('input[name="size"]').forEach((input) => input.addEventListener('change', loadAnimals)); document.querySelector('#sort-filter').addEventListener('change', loadAnimals);
 document.querySelector('#clear-filters').addEventListener('click', () => { document.querySelector('#species-filter').value = ''; document.querySelector('#location-filter').value = ''; document.querySelector('#source-filter').value = ''; document.querySelector('#urgent-filter').checked = false; document.querySelectorAll('input[name="size"]').forEach((input) => { input.checked = false; }); loadAnimals(); }); document.querySelectorAll('[data-category]').forEach((category) => category.addEventListener('click', () => { document.querySelectorAll('[data-category]').forEach((item) => item.classList.remove('active')); category.classList.add('active'); document.querySelector('#species-filter').value = category.dataset.category; document.querySelector('#urgent-filter').checked = false; loadAnimals(); })); document.querySelector('[data-urgent]').addEventListener('click', () => { document.querySelectorAll('[data-category]').forEach((item) => item.classList.remove('active')); document.querySelector('[data-urgent]').classList.add('active'); document.querySelector('#urgent-filter').checked = true; loadAnimals(); });
 grid.addEventListener('click', (event) => { const favorite = event.target.closest('[data-favorite]'); if (favorite) { event.preventDefault(); toggleFavorite(favorite.dataset.favorite); return; } const details = event.target.closest('[data-details]'); if (details) showDetails(details.dataset.details); });
-document.querySelectorAll('#open-post-top, #open-post-banner').forEach((button) => button.addEventListener('click', requireLogin)); document.querySelector('#open-login-mobile').addEventListener('click', () => showAuth('login')); document.querySelector('#modal-close').addEventListener('click', closeModal); document.querySelector('#modal-backdrop').addEventListener('click', (event) => { if (event.target.id === 'modal-backdrop') closeModal(); }); document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !document.querySelector('#modal-backdrop').hidden) closeModal(); }); document.querySelector('#open-filters').addEventListener('click', () => document.querySelector('#filters-sidebar').classList.toggle('open')); document.querySelector('#menu-toggle').addEventListener('click', (event) => { const nav = document.querySelector('#mobile-nav'); nav.classList.toggle('open'); event.currentTarget.setAttribute('aria-expanded', nav.classList.contains('open')); });
+document.querySelectorAll('#open-post-top, #open-post-banner').forEach((button) => button.addEventListener('click', requireLogin)); document.querySelector('#open-login-mobile').addEventListener('click', () => (currentUser ? showMyAds() : showAuth('login'))); document.querySelector('#modal-close').addEventListener('click', closeModal); document.querySelector('#modal-backdrop').addEventListener('click', (event) => { if (event.target.id === 'modal-backdrop') closeModal(); }); document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !document.querySelector('#modal-backdrop').hidden) closeModal(); }); document.querySelector('#open-filters').addEventListener('click', () => document.querySelector('#filters-sidebar').classList.toggle('open')); document.querySelector('#menu-toggle').addEventListener('click', (event) => { const nav = document.querySelector('#mobile-nav'); nav.classList.toggle('open'); event.currentTarget.setAttribute('aria-expanded', nav.classList.contains('open')); });
 updateAuthUI(); updateFavoriteCount(); loadAnimals(); restoreSession();

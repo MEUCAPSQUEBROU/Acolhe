@@ -23,3 +23,9 @@ export async function storeImage(image) {
     await fs.writeFile(path.join(config.uploadsDir, fileName), buffer);
     return `/uploads/${fileName}`;
 }
+
+// Apaga do disco fotos enviadas pelos usuários. Links externos e fotos de exemplo são ignorados.
+export async function removeStoredImages(images = []) {
+    const uploaded = images.filter((image) => /^\/uploads\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(image));
+    await Promise.all(uploaded.map((image) => fs.rm(path.join(config.uploadsDir, path.basename(image)), { force: true }).catch(() => {})));
+}

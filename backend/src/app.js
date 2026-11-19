@@ -17,9 +17,10 @@ app.use((req, res, next) => {
     next();
 });
 
-// A publicação de anúncios tem limite maior (fotos); ela usa seu próprio parser.
+// Publicar e editar anúncios têm limite maior (fotos); essas rotas usam seu próprio parser.
 const smallJson = express.json({ limit: "1mb" });
-app.use((req, res, next) => (req.method === "POST" && req.path === "/api/animals" ? next() : smallJson(req, res, next)));
+const sendsPhotos = (req) => (req.method === "POST" && req.path === "/api/animals") || (req.method === "PUT" && req.path.startsWith("/api/animals/"));
+app.use((req, res, next) => (sendsPhotos(req) ? next() : smallJson(req, res, next)));
 
 routes(app);
 
