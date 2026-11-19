@@ -6,11 +6,11 @@ import { rateLimit } from "../middleware/rateLimit.js";
 
 const routes = express.Router();
 const largeJson = express.json({ limit: "45mb" });
-const publishLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 20 });
+const publishLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 200 });
 
 routes.get("/api/animals", animalController.listar);
 routes.get("/api/animals/:id", animalController.buscarPorId);
-const editLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 60 });
+const editLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 300 });
 const ownerAuth = requireAuth("Faça login para gerenciar seus anúncios.");
 
 routes.post("/api/animals", requireAuth("Faça login para publicar um anúncio."), publishLimit, largeJson, animalController.criar);

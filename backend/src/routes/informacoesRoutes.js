@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 
 const routes = express.Router();
-const authLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
+const authLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
 
 routes.post("/api/auth/register", authLimit, cadastroController.criarCadastro);
 routes.post("/api/auth/login", authLimit, cadastroController.login);
