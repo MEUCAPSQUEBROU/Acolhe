@@ -32,6 +32,7 @@ app.use((error, req, res, next) => {
     const status = error.status || error.statusCode || 500;
     if (status === 413) return res.status(413).json({ error: "As imagens são grandes demais. Tente fotos menores." });
     if (error.type === "entity.parse.failed") return res.status(400).json({ error: "Envie os dados em formato válido." });
+    if (error.name === "ValidationError" || error.name === "CastError") return res.status(400).json({ error: "Confira os dados informados e tente novamente." });
     if (status >= 500) console.error(error);
     res.status(status).json({ error: error.publicMessage || (status === 404 ? "Arquivo não encontrado." : "Erro interno do servidor.") });
 });

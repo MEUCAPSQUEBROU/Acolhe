@@ -53,8 +53,7 @@ class animalController {
             }
         }
 
-        const storedImages = await Promise.all(images.map(storeImage));
-        const animal = await Animal.create({
+        const animal = new Animal({
             id: `${slugify(name)}-${crypto.randomBytes(4).toString("hex")}`,
             name,
             species,
@@ -73,10 +72,24 @@ class animalController {
             externalLink: externalLink || undefined,
             traits: Array.isArray(input.traits) ? input.traits.map(text).filter(Boolean).slice(0, 6) : ["Aguardando um lar"],
             postedAt: new Date().toISOString().slice(0, 10),
-            images: storedImages,
-            photo: storedImages[0],
             postedBy: req.user._id.toString(),
         });
+
+        // Valida antes de gravar as fotos, para não deixar arquivos órfãos no disco.
+        try {
+            await animal.validate();
+        } catch (error) {
+            if (error.name !== "ValidationError") throw error;
+            const field = Object.keys(error.errors)[0];
+            const labels = { name: "Nome", city: "Cidade", description: "Descrição", organization: "Nome da ONG ou responsável", contact: "Contato adicional", externalLink: "Link externo", state: "Estado", species: "Espécie", whatsapp: "WhatsApp" };
+            const kind = error.errors[field]?.kind;
+            const message = kind === "maxlength" ? `O campo "${labels[field] || field}" está longo demais.` : `Confira o campo "${labels[field] || field}".`;
+            return res.status(400).json({ error: message });
+        }
+
+        animal.images = await Promise.all(images.map(storeImage));
+        animal.photo = animal.images[0];
+        await animal.save();
         res.status(201).json(animal);
     }
 
